@@ -1,0 +1,5 @@
+{
+  "name": "RobCo Nuclear Terminal",
+  "description": "A Fallout-inspired word decryption game terminal based on a cipher alphabet and officer codes.",
+  "requestFramePermissions": []
+}

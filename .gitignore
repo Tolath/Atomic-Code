@@ -1,0 +1,25 @@
+# Node dependencies
+node_modules/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# environment
+.env
+.env.local
+.env.*.local
+
+# build output
+dist/
+
+# VS Code
+.vscode/
+
+# macOS
+.DS_Store
+
+# misc
+*.log
+**/coverage/

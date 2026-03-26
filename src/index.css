@@ -1,0 +1,81 @@
+@import "tailwindcss";
+
+@theme {
+  --font-mono: "VT323", "Courier New", Courier, monospace;
+}
+
+@layer base {
+  body {
+    @apply bg-[#050505] text-[#33ff33] font-mono overflow-hidden;
+    text-shadow: 0 0 5px rgba(51, 255, 51, 0.8);
+  }
+}
+
+@layer components {
+  .terminal-screen {
+    @apply relative w-full h-screen p-8 flex flex-col overflow-hidden;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+    background-size: 100% 2px, 3px 100%;
+  }
+
+  .scanlines {
+    @apply pointer-events-none absolute inset-0 z-10;
+    background: linear-gradient(
+      rgba(18, 16, 16, 0) 50%,
+      rgba(0, 0, 0, 0.1) 50%
+    );
+    background-size: 100% 4px;
+  }
+
+  .flicker {
+    @apply pointer-events-none absolute inset-0 z-20 opacity-[0.02];
+    background: #fff;
+    animation: flicker 0.15s infinite;
+  }
+
+  .crt-overlay {
+    @apply pointer-events-none absolute inset-0 z-30;
+    background: radial-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.4) 100%);
+  }
+
+  @keyframes flicker {
+    0% { opacity: 0.02739; }
+    5% { opacity: 0.03834; }
+    10% { opacity: 0.04567; }
+    15% { opacity: 0.03464; }
+    20% { opacity: 0.02554; }
+    25% { opacity: 0.03194; }
+    30% { opacity: 0.03792; }
+    35% { opacity: 0.02234; }
+    40% { opacity: 0.03106; }
+    45% { opacity: 0.02827; }
+    50% { opacity: 0.04145; }
+    55% { opacity: 0.02941; }
+    60% { opacity: 0.03162; }
+    65% { opacity: 0.04136; }
+    70% { opacity: 0.03533; }
+    75% { opacity: 0.02558; }
+    80% { opacity: 0.03103; }
+    85% { opacity: 0.0469; }
+    90% { opacity: 0.03983; }
+    95% { opacity: 0.02167; }
+    100% { opacity: 0.03395; }
+  }
+
+  .terminal-input {
+    @apply bg-transparent border-none outline-none text-[#33ff33] font-mono w-full;
+    text-shadow: 0 0 5px rgba(51, 255, 51, 0.8);
+  }
+
+  .blink {
+    animation: blink 1s step-end infinite;
+  }
+
+  @keyframes blink {
+    from, to { opacity: 1; }
+    50% { opacity: 0; }
+  }
+}
+
+/* Custom font import */
+@import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
