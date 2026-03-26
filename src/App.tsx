@@ -102,6 +102,12 @@ export default function App() {
     };
   }, [isHelperOpen]);
 
+  // Audio element for click sound
+  const clickSoundRef = useRef<HTMLAudioElement>(null);
+  const playClickSound = () => {
+    clickSoundRef.current?.play();
+  };
+
   // Debugowanie otwierania pomocnika
   useEffect(() => {
     console.log(`[Terminal] Stan dekryptora: ${isHelperOpen ? 'OTWARTY' : 'ZAMKNIĘTY'}`);
@@ -478,6 +484,7 @@ export default function App() {
                           <button 
                             key={i} 
                             onClick={() => toggleWorkbenchLetter(char)}
+                            onMouseDown={playClickSound} // Play sound on click
                             className={`border border-[#33ff33]/30 transition-all cursor-pointer ${isInWorkbench ? 'bg-[#33ff33] text-[#050505]' : 'hover:bg-[#33ff33]/20'}`}
                           >
                             <div className={`p-1 text-[10px] border-b border-[#33ff33]/10 uppercase ${isInWorkbench ? 'text-[#050505]/60' : ''}`}>{char}</div>
@@ -571,6 +578,11 @@ export default function App() {
           <span>CPU: 1.19MHZ</span>
         </div>
       </footer>
+
+      {/* Hidden audio element for click sound */}
+      <audio ref={clickSoundRef} src="/sounds/terminal_click.mp3" preload="auto" className="hidden">
+        Your browser does not support the audio element.
+      </audio>
 
       <style>{`
         .custom-scrollbar {
