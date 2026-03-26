@@ -67,6 +67,7 @@ export default function App() {
   const [isHelperOpen, setIsHelperOpen] = useState(false);
 
   // States for the interactive helper workbench
+  const audioStarted = useRef(false);
   const startupSoundRef = useRef<HTMLAudioElement>(null);
   const hummSoundRef = useRef<HTMLAudioElement>(null);
   const [workbenchLetters, setWorkbenchLetters] = useState<(PuzzleItem & { decoded: string, id: string })[]>([]);
@@ -104,28 +105,79 @@ export default function App() {
     };
   }, [isHelperOpen]);
 
-  // Audio for background music (startup and humm)
+  // Audio for background music (startup and humm) with fade-in
   useEffect(() => {
+    // Zapobiega podwójnemu odpaleniu w StrictMode
+    if (audioStarted.current) return;
+
     const startupAudio = startupSoundRef.current;
     const hummAudio = hummSoundRef.current;
+    let fadeInterval: NodeJS.Timeout | null = null; // To store the interval ID for fading
+    let crossfadeTimeout: NodeJS.Timeout | null = null; 
 
     if (startupAudio && hummAudio) {
-      // Play startup sound once on component mount
-      startupAudio.play().catch(e => console.error("Error playing startup sound:", e));
+      audioStarted.current = true;
 
-      // Start humm sound muted and looped immediately, so it's already playing/buffered when needed
-      hummAudio.muted = true;
+      // Konfiguracja humm
       hummAudio.loop = true;
-      hummAudio.play().catch(e => console.error("Error playing humm sound (muted):", e));
+      hummAudio.volume = 0;
+      hummAudio.muted = false;
 
-      // When startup ends, unmute humm
+      // Function to gradually increase hummAudio volume
+      const fadeInHumm = () => {
+        if (fadeInterval) clearInterval(fadeInterval);
+        
+        let vol = 0;
+        const targetVolume = 1; 
+        const step = 0.05; // Mniej kroków, ale większe, by uniknąć glitchy
+
+        fadeInterval = setInterval(() => {
+          vol += step;
+          if (vol >= targetVolume) {
+            hummAudio.volume = targetVolume;
+            if (fadeInterval) clearInterval(fadeInterval);
+          } else {
+            hummAudio.volume = vol;
+          }
+        }, 50);
+      };
+
+      const startSequence = () => {
+        startupAudio.play().catch(e => {
+          console.warn("[Audio] Startup blocked, playing humm immediately.");
+          hummAudio.play().catch(() => {});
+          fadeInHumm();
+        });
+
+        // Planowanie cross-fade na 1 sekundę przed końcem startupu
+        const setupCrossfade = () => {
+          const duration = startupAudio.duration * 1000;
+          const offset = 1000; // zacznij 1s przed końcem
+          crossfadeTimeout = setTimeout(() => {
+            hummAudio.play().catch(() => {});
+            fadeInHumm();
+          }, Math.max(0, duration - offset));
+        };
+
+        if (startupAudio.readyState >= 1) setupCrossfade();
+        else startupAudio.onloadedmetadata = setupCrossfade;
+      };
+
+      startSequence();
+
       startupAudio.onended = () => {
-        hummAudio.muted = false;
-        // Ensure humm is playing, in case it failed to play muted initially (e.g., due to autoplay policy)
-        hummAudio.play().catch(e => console.error("Error playing humm sound (unmuted):", e));
+        if (crossfadeTimeout) clearTimeout(crossfadeTimeout);
+        if (hummAudio.paused) {
+          hummAudio.play().catch(() => {});
+          fadeInHumm();
+        }
       };
     }
-    // Empty dependency array ensures this runs only once on mount
+
+    return () => {
+      if (crossfadeTimeout) clearTimeout(crossfadeTimeout);
+      if (fadeInterval) clearInterval(fadeInterval);
+    };
   }, []);
   // Audio element for click sound
   const clickSoundRef = useRef<HTMLAudioElement>(null);
