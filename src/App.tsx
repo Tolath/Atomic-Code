@@ -4,8 +4,8 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Terminal, ShieldAlert, ShieldCheck, RefreshCw, Info, X, Cpu } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { Terminal, ShieldAlert, ShieldCheck, RefreshCw, Info, X, Cpu, MoveHorizontal } from 'lucide-react';
+import { motion, AnimatePresence, Reorder } from 'motion/react';
 import rawWords from './words.txt?raw';
 
 // ======== CONFIGURATION ========
@@ -61,6 +61,14 @@ export default function App() {
     cipherAlphabet: ''
   });
   const [isHelperOpen, setIsHelperOpen] = useState(false);
+
+  // States for the interactive helper workbench
+  const [workbenchLetters, setWorkbenchLetters] = useState<(PuzzleItem & { decoded: string, id: string })[]>([]);
+  const [draftWord, setDraftWord] = useState('');
+
+  useEffect(() => {
+    setDraftWord('');
+  }, [game.targetWord]);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -143,11 +151,39 @@ export default function App() {
       userInput: '',
       cipherAlphabet
     });
+    setWorkbenchLetters([]);
   };
 
   useEffect(() => {
     initGame();
   }, []);
+
+  const toggleWorkbenchLetter = (originalChar: string) => {
+    const upperChar = originalChar.toUpperCase();
+    const allAvailable = game.puzzleData.map((p, idx) => {
+      const alphaIdx = game.cipherAlphabet.indexOf(p.char.toLowerCase());
+      return {
+        ...p,
+        decoded: ALPHABET[alphaIdx].toUpperCase(),
+        id: `letter-${idx}`
+      };
+    });
+
+    const instancesOfChar = allAvailable.filter(item => item.decoded === upperChar);
+    if (instancesOfChar.length === 0) return;
+
+    setWorkbenchLetters(prev => {
+      const alreadyIn = prev.filter(item => item.decoded === upperChar);
+      if (alreadyIn.length < instancesOfChar.length) {
+        const nextToAdd = instancesOfChar.find(inst => !prev.some(p => p.id === inst.id));
+        if (nextToAdd) return [...prev, nextToAdd];
+      } else {
+        const toRemove = prev.find(item => item.decoded === upperChar);
+        return prev.filter(item => item.id !== toRemove?.id);
+      }
+      return prev;
+    });
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -341,7 +377,7 @@ export default function App() {
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
               onClick={(e) => e.stopPropagation()}
-              className="helper-modal border-2 border-[#33ff33] bg-[#050505] p-6 max-w-2xl w-full relative shadow-[0_0_30px_rgba(51,255,51,0.15)] overflow-y-auto max-h-[90vh]"
+              className="helper-modal border-2 border-[#33ff33] bg-[#050505] p-6 max-w-3xl w-full relative shadow-[0_0_30px_rgba(51,255,51,0.15)] overflow-y-auto max-h-[90vh]"
             >
               <div className="flex justify-between items-center mb-6 border-b border-[#33ff33]/30 pb-2">
                 <div className="flex items-center gap-2 text-[#33ff33]">
@@ -359,15 +395,24 @@ export default function App() {
               <div className="space-y-8">
                 {/* Alphabet Mapping */}
                 <section>
-                  <h3 className="text-sm opacity-60 uppercase mb-3 tracking-widest text-center">Mapowanie Alfabetu (A-Z)</h3>
+                  <h3 className="text-xs opacity-60 uppercase mb-3 tracking-widest text-center">Tabela Podstawień</h3>
                   <div className="overflow-x-auto pb-2 custom-scrollbar">
                     <div className="grid grid-cols-13 gap-1 min-w-[600px] text-center font-mono text-sm">
-                      {ALPHABET.split('').map((char, i) => (
-                        <div key={i} className="border border-[#33ff33]/20">
-                          <div className="bg-[#33ff33]/10 p-1 opacity-50 uppercase">{char}</div>
-                          <div className="p-1 font-bold text-lg uppercase">{game.cipherAlphabet[i]}</div>
-                        </div>
-                      ))}
+                      {ALPHABET.split('').map((char, i) => {
+                        const upperChar = char.toUpperCase();
+                        const isInWorkbench = workbenchLetters.some(l => l.decoded === upperChar);
+
+                        return (
+                          <button 
+                            key={i} 
+                            onClick={() => toggleWorkbenchLetter(char)}
+                            className={`border border-[#33ff33]/30 transition-all cursor-pointer ${isInWorkbench ? 'bg-[#33ff33] text-[#050505]' : 'hover:bg-[#33ff33]/20'}`}
+                          >
+                            <div className={`p-1 text-[10px] border-b border-[#33ff33]/10 uppercase ${isInWorkbench ? 'text-[#050505]/60' : ''}`}>{char}</div>
+                            <div className="p-1 font-bold text-lg uppercase">{game.cipherAlphabet[i]}</div>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                   <div className="mt-2 text-[10px] opacity-40 italic text-center uppercase">Góra: Oryginał | Dół: Szyfr</div>
@@ -375,14 +420,57 @@ export default function App() {
 
                 {/* Officer Data Recap */}
                 <section>
-                  <h3 className="text-sm opacity-60 uppercase mb-3 tracking-widest text-center">Szybki podgląd meldunków</h3>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <h3 className="text-xs opacity-60 uppercase mb-3 tracking-widest text-center">Dane Wywiadowcze (Meldunki)</h3>
+                  <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
                     {game.puzzleData.map((data, i) => (
-                      <div key={i} className="bg-[#33ff33]/5 border border-[#33ff33]/20 p-2 text-center">
-                        <div className="text-xs opacity-50 uppercase tracking-tighter">Ofcr {i+1}</div>
-                        <div className="text-lg font-bold uppercase">{data.char} : {data.digit}</div>
+                      <div key={i} className="bg-[#33ff33]/5 border border-[#33ff33]/20 py-1 text-center">
+                        <div className="text-[9px] opacity-40 uppercase">#{i+1}</div>
+                        <div className="text-base font-bold uppercase">{data.char}→{data.digit}</div>
                       </div>
                     ))}
+                  </div>
+                </section>
+
+                {/* Interactive Workbench */}
+                <section className="border-y border-[#33ff33]/20 py-6">
+                  <h3 className="text-sm font-bold uppercase mb-4 text-[#33ff33] flex items-center gap-2">
+                    <MoveHorizontal size={16} /> Warsztat Dekryptażu (Przeciągnij litery)
+                  </h3>
+                  <Reorder.Group 
+                    axis="x" 
+                    values={workbenchLetters} 
+                    onReorder={setWorkbenchLetters}
+                    className="flex flex-wrap justify-center gap-3 mb-6"
+                  >
+                    {workbenchLetters.map((item) => (
+                      <Reorder.Item 
+                        key={item.id} 
+                        value={item}
+                        className="cursor-grab active:cursor-grabbing bg-[#33ff33]/20 border-2 border-[#33ff33] p-3 rounded min-w-[60px] text-center"
+                      >
+                        <div className="text-2xl font-black">{item.decoded}</div>
+                        <div className="text-xs opacity-60 border-t border-[#33ff33]/30 mt-1">{item.digit}</div>
+                      </Reorder.Item>
+                    ))}
+                  </Reorder.Group>
+                  
+                  {workbenchLetters.length === 0 && (
+                    <div className="text-center py-4 border-2 border-dashed border-[#33ff33]/20 rounded mb-6">
+                      <p className="text-xs opacity-40 uppercase italic">
+                        Kliknij w odkodowane litery w tabeli powyżej, aby dodać je tutaj
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="flex flex-col items-center gap-2">
+                    <span className="text-xs opacity-50 uppercase">Brudnopis słowa:</span>
+                    <input 
+                      type="text"
+                      placeholder="Tutaj wpisz słowo..."
+                      value={draftWord}
+                      onChange={(e) => setDraftWord(e.target.value.toUpperCase())}
+                      className="bg-transparent border border-[#33ff33]/30 px-4 py-1 text-center tracking-[0.2em] outline-none focus:border-[#33ff33]"
+                    />
                   </div>
                 </section>
 
