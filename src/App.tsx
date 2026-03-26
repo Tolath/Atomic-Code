@@ -67,6 +67,8 @@ export default function App() {
   const [isHelperOpen, setIsHelperOpen] = useState(false);
 
   // States for the interactive helper workbench
+  const startupSoundRef = useRef<HTMLAudioElement>(null);
+  const hummSoundRef = useRef<HTMLAudioElement>(null);
   const [workbenchLetters, setWorkbenchLetters] = useState<(PuzzleItem & { decoded: string, id: string })[]>([]);
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -102,6 +104,29 @@ export default function App() {
     };
   }, [isHelperOpen]);
 
+  // Audio for background music (startup and humm)
+  useEffect(() => {
+    const startupAudio = startupSoundRef.current;
+    const hummAudio = hummSoundRef.current;
+
+    if (startupAudio && hummAudio) {
+      // Play startup sound once on component mount
+      startupAudio.play().catch(e => console.error("Error playing startup sound:", e));
+
+      // Start humm sound muted and looped immediately, so it's already playing/buffered when needed
+      hummAudio.muted = true;
+      hummAudio.loop = true;
+      hummAudio.play().catch(e => console.error("Error playing humm sound (muted):", e));
+
+      // When startup ends, unmute humm
+      startupAudio.onended = () => {
+        hummAudio.muted = false;
+        // Ensure humm is playing, in case it failed to play muted initially (e.g., due to autoplay policy)
+        hummAudio.play().catch(e => console.error("Error playing humm sound (unmuted):", e));
+      };
+    }
+    // Empty dependency array ensures this runs only once on mount
+  }, []);
   // Audio element for click sound
   const clickSoundRef = useRef<HTMLAudioElement>(null);
   const playClickSound = () => {
@@ -583,6 +608,16 @@ export default function App() {
       <audio ref={clickSoundRef} src="/sounds/terminal_click.mp3" preload="auto" className="hidden">
         Your browser does not support the audio element.
       </audio>
+
+      {/* Hidden audio elements for background music */}
+      <audio ref={startupSoundRef} src="/sounds/startup.mp3" preload="auto" className="hidden">
+        Your browser does not support the audio element.
+      </audio>
+      <audio ref={hummSoundRef} src="/sounds/humm.mp3" preload="auto" loop className="hidden">
+        Your browser does not support the audio element.
+      </audio>
+
+
 
       <style>{`
         .custom-scrollbar {
