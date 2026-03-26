@@ -4,12 +4,12 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Terminal, ShieldAlert, ShieldCheck, RefreshCw, Info } from 'lucide-react';
+import { Terminal, ShieldAlert, ShieldCheck, RefreshCw, Info, X, Cpu } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import rawWords from './words.txt?raw';
 
 // ======== CONFIGURATION ========
-const WORD_LENGTH = 8;
+const WORD_LENGTH = 4;
 const CONSISTENT_CODE_FOR_SAME_LETTER = true;
 const ALPHABET = "abcdefghijklmnopqrstuvwxyz";
 
@@ -60,8 +60,14 @@ export default function App() {
     userInput: '',
     cipherAlphabet: ''
   });
+  const [isHelperOpen, setIsHelperOpen] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Debugowanie otwierania pomocnika
+  useEffect(() => {
+    console.log(`[Terminal] Stan dekryptora: ${isHelperOpen ? 'OTWARTY' : 'ZAMKNIĘTY'}`);
+  }, [isHelperOpen]);
 
   const generateFullAlphabet = (key: string) => {
     const lowKey = key.toLowerCase();
@@ -159,8 +165,15 @@ export default function App() {
     setGame(prev => ({ ...prev, userInput: val }));
   };
 
-  const focusInput = () => {
-    inputRef.current?.focus();
+  const focusInput = (e: React.MouseEvent) => {
+    // Nie kradnij fokusu, jeśli klikamy wewnątrz modala pomocnika
+    if ((e.target as HTMLElement).closest('.helper-modal')) return;
+    
+    if (isHelperOpen) {
+      document.getElementById('helper-input')?.focus();
+    } else {
+      inputRef.current?.focus();
+    }
   };
 
   return (
@@ -170,10 +183,10 @@ export default function App() {
       <div className="crt-overlay"></div>
 
       {/* Header */}
-      <header className="border-b border-[#33ff33] pb-2 mb-6 flex justify-between items-center z-40">
+      <header className="border-b border-[#33ff33] pb-2 mb-4 flex justify-between items-center z-40 shrink-0">
         <div className="flex items-center gap-2">
           <Terminal size={20} />
-          <span className="text-xl tracking-widest uppercase">RobCo Industries (TM) Termlink</span>
+          <span className="text-lg sm:text-xl tracking-widest uppercase">RobCo Industries (TM) Termlink</span>
         </div>
         <div className="text-sm opacity-70">
           V7.0.1.2 - AUTHENTICATED AS: TOLATH
@@ -181,7 +194,7 @@ export default function App() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col gap-6 z-40 max-w-3xl mx-auto w-full">
+      <main className="flex-1 flex flex-col gap-4 z-40 max-w-3xl mx-auto w-full overflow-y-auto pr-2 custom-scrollbar">
         <div className="text-center mb-4">
           <h1 className="text-3xl font-bold tracking-tighter uppercase mb-1">
             Terminal Aktywacji Atomówki
@@ -201,7 +214,14 @@ export default function App() {
               <div className="bg-[#33ff33]/10 p-4 border border-[#33ff33]/30 rounded">
                 <p className="text-lg">
                   <span className="opacity-60">KLUCZ SZYFRU DNIA:</span>{" "}
-                  <span className="font-bold underline decoration-double">{game.keyWord}</span>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setIsHelperOpen(true); }}
+                    className="font-bold underline decoration-double cursor-pointer hover:bg-[#33ff33] hover:text-[#050505] transition-colors px-2 py-0.5 rounded animate-pulse"
+                    title="Otwórz Dekryptor"
+                  >
+                    {game.keyWord}
+                  </button>
+                  <span className="text-xs ml-3 opacity-40 italic">[KLIKNIJ KLUCZ, ABY OTWORZYĆ POMOC]</span>
                 </p>
               </div>
 
@@ -209,7 +229,7 @@ export default function App() {
                 <h2 className="text-xl flex items-center gap-2">
                   <Info size={18} /> DANE OD OFICERÓW TERENOWYCH:
                 </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[30vh] overflow-y-auto p-1 border border-[#33ff33]/10 rounded bg-[#050505]/50">
                   {game.puzzleData.map((data, i) => (
                     <motion.div
                       key={i}
@@ -306,14 +326,119 @@ export default function App() {
         </AnimatePresence>
       </main>
 
+      {/* Decryptor Helper Modal */}
+      <AnimatePresence>
+        {isHelperOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#050505]/95 backdrop-blur-sm"
+            onClick={() => setIsHelperOpen(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="helper-modal border-2 border-[#33ff33] bg-[#050505] p-6 max-w-2xl w-full relative shadow-[0_0_30px_rgba(51,255,51,0.15)] overflow-y-auto max-h-[90vh]"
+            >
+              <div className="flex justify-between items-center mb-6 border-b border-[#33ff33]/30 pb-2">
+                <div className="flex items-center gap-2 text-[#33ff33]">
+                  <Cpu size={20} />
+                  <span className="text-lg font-bold uppercase tracking-tighter">RobCo Decryptor v1.0.4</span>
+                </div>
+                <button 
+                  onClick={() => setIsHelperOpen(false)}
+                  className="hover:bg-red-600 hover:text-white transition-colors p-1"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="space-y-8">
+                {/* Alphabet Mapping */}
+                <section>
+                  <h3 className="text-sm opacity-60 uppercase mb-3 tracking-widest text-center">Mapowanie Alfabetu (A-Z)</h3>
+                  <div className="overflow-x-auto pb-2 custom-scrollbar">
+                    <div className="grid grid-cols-13 gap-1 min-w-[600px] text-center font-mono text-sm">
+                      {ALPHABET.split('').map((char, i) => (
+                        <div key={i} className="border border-[#33ff33]/20">
+                          <div className="bg-[#33ff33]/10 p-1 opacity-50 uppercase">{char}</div>
+                          <div className="p-1 font-bold text-lg uppercase">{game.cipherAlphabet[i]}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="mt-2 text-[10px] opacity-40 italic text-center uppercase">Góra: Oryginał | Dół: Szyfr</div>
+                </section>
+
+                {/* Officer Data Recap */}
+                <section>
+                  <h3 className="text-sm opacity-60 uppercase mb-3 tracking-widest text-center">Szybki podgląd meldunków</h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {game.puzzleData.map((data, i) => (
+                      <div key={i} className="bg-[#33ff33]/5 border border-[#33ff33]/20 p-2 text-center">
+                        <div className="text-xs opacity-50 uppercase tracking-tighter">Ofcr {i+1}</div>
+                        <div className="text-lg font-bold uppercase">{data.char} : {data.digit}</div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+
+                {/* Input Mirror */}
+                <section className="bg-[#33ff33]/10 p-6 border border-[#33ff33]/30 rounded text-center">
+                  <label htmlFor="helper-input" className="block text-sm mb-4 opacity-70 uppercase tracking-widest">
+                    Wprowadź Odkodowany Kod
+                  </label>
+                  <div className="flex justify-center items-center gap-3">
+                    <span className="text-3xl animate-pulse text-[#33ff33]">{">"}</span>
+                    <input
+                      id="helper-input"
+                      type="text"
+                      value={game.userInput}
+                      onChange={handleInputChange}
+                      autoFocus
+                      placeholder={"_".repeat(WORD_LENGTH)}
+                      className="bg-transparent border-b-2 border-[#33ff33] text-4xl tracking-[0.4em] outline-none w-64 text-center pb-2"
+                    />
+                  </div>
+                  <p className="mt-4 text-[10px] opacity-50 italic uppercase">
+                    {WORD_LENGTH} cyfr wymaganych. Naciśnij ESC lub X aby wrócić.
+                  </p>
+                </section>
+              </div>
+              
+              <div className="scanlines pointer-events-none"></div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Footer */}
-      <footer className="mt-6 pt-4 border-t border-[#33ff33]/20 flex justify-between text-xs opacity-50 z-40">
+      <footer className="mt-4 pt-4 border-t border-[#33ff33]/20 flex justify-between text-xs opacity-50 z-40 shrink-0">
         <div>(C) 2077 ROBCO INDUSTRIES</div>
         <div className="flex gap-4">
           <span>MEM: 640KB</span>
           <span>CPU: 1.19MHZ</span>
         </div>
       </footer>
+
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 4px;
+          height: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: rgba(51, 255, 51, 0.05);
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(51, 255, 51, 0.3);
+        }
+        .grid-cols-13 {
+          grid-template-columns: repeat(13, minmax(0, 1fr));
+        }
+      `}</style>
     </div>
   );
 }
