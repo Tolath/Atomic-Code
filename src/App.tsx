@@ -6,6 +6,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Terminal, ShieldAlert, ShieldCheck, RefreshCw, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import rawWords from './words.txt?raw';
 
 // ======== CONFIGURATION ========
 const WORD_LENGTH = 8;
@@ -23,8 +24,16 @@ const FALLBACK_WORDS = [
   "also", "back", "after", "use", "two", "how", "our", "work", "first", "well", "way",
   "even", "new", "want", "because", "any", "these", "give", "day", "most", "us",
   "code", "data", "link", "fire", "base", "zone", "gate", "path", "lock", "key",
-  "alpha", "bravo", "delta", "gamma", "omega", "sigma", "theta", "zeta", "echo"
+  "alpha", "bravo", "delta", "gamma", "omega", "sigma", "theta", "zeta", "echo",
+  "activate", "security", "terminal", "protocol", "database", "overseer", "shutdown", "junction",
+  "position", "strength"
 ];
+
+const EXTERNAL_WORDS = rawWords
+  ? rawWords.split(/\r?\n/).map(w => w.trim().toLowerCase()).filter(w => w.length > 0)
+  : [];
+
+console.log(`[Terminal] Załadowano zewnętrzną bazę słów: ${EXTERNAL_WORDS.length} pozycji.`);
 
 interface PuzzleItem {
   char: string;
@@ -62,10 +71,17 @@ export default function App() {
   };
 
   const initGame = () => {
-    const wordsPool = FALLBACK_WORDS.filter(w => w.length === WORD_LENGTH);
+    const combinedPool = [...FALLBACK_WORDS, ...EXTERNAL_WORDS];
+    const wordsPool = combinedPool.filter(w => w.length === WORD_LENGTH);
     const keysPool = FALLBACK_WORDS.filter(w => w.length >= 4 && w.length <= 6);
 
     const targetWord = wordsPool[Math.floor(Math.random() * wordsPool.length)];
+    
+    if (!targetWord) {
+      console.error(`Błąd: Brak słów o długości ${WORD_LENGTH} w puli FALLBACK_WORDS.`);
+      return;
+    }
+
     const keyWord = keysPool[Math.floor(Math.random() * keysPool.length)].toUpperCase();
     const cipherAlphabet = generateFullAlphabet(keyWord.toLowerCase());
 
@@ -227,7 +243,7 @@ export default function App() {
                       onChange={handleInputChange}
                       className="terminal-input text-2xl tracking-[0.5em] w-48"
                       autoFocus
-                      placeholder="____"
+                      placeholder={"_".repeat(WORD_LENGTH)}
                     />
                   </div>
                   <button 
