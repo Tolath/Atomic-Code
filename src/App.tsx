@@ -67,6 +67,28 @@ export default function App() {
 
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Globalne kierowanie fokusu do inputów
+  useEffect(() => {
+    const handleGlobalFocus = (e: Event) => {
+      // Nie kradnij fokusu, jeśli użytkownik celowo klika w przycisk
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'BUTTON' || target.tagName === 'A') return;
+
+      if (isHelperOpen) {
+        document.getElementById('helper-input')?.focus();
+      } else {
+        inputRef.current?.focus();
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalFocus);
+    window.addEventListener('mousedown', handleGlobalFocus);
+    return () => {
+      window.removeEventListener('keydown', handleGlobalFocus);
+      window.removeEventListener('mousedown', handleGlobalFocus);
+    };
+  }, [isHelperOpen]);
+
   // Debugowanie otwierania pomocnika
   useEffect(() => {
     console.log(`[Terminal] Stan dekryptora: ${isHelperOpen ? 'OTWARTY' : 'ZAMKNIĘTY'}`);
@@ -196,19 +218,8 @@ export default function App() {
     setGame(prev => ({ ...prev, userInput: val }));
   };
 
-  const focusInput = (e: React.MouseEvent) => {
-    // Nie kradnij fokusu, jeśli klikamy wewnątrz modala pomocnika
-    if ((e.target as HTMLElement).closest('.helper-modal')) return;
-    
-    if (isHelperOpen) {
-      document.getElementById('helper-input')?.focus();
-    } else {
-      inputRef.current?.focus();
-    }
-  };
-
   return (
-    <div className="terminal-screen" onClick={focusInput}>
+    <div className="terminal-screen">
       <div className="scanlines"></div>
       <div className="flicker"></div>
       <div className="crt-overlay"></div>
@@ -469,6 +480,7 @@ export default function App() {
                       id="helper-input"
                       type="text"
                       value={game.userInput}
+                      autoComplete="off"
                       onChange={handleInputChange}
                       autoFocus
                       placeholder={"_".repeat(WORD_LENGTH)}
