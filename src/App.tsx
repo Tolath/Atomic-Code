@@ -312,24 +312,6 @@ export default function App() {
                 </div>
               </div>
 
-              {game.revealedIndices.length > 0 && (
-                <div className="bg-[#33ff33]/5 border-2 border-dashed border-[#33ff33]/30 p-4 rounded text-center">
-                  <h3 className="text-xs opacity-50 uppercase tracking-[0.2em] mb-2">Pamięć Terminala: Logi sekwencyjne</h3>
-                  <div className="flex justify-center gap-4">
-                    {game.targetWord.split('').map((char, i) => (
-                      <div key={i} className="flex flex-col items-center">
-                        <div className={`text-2xl font-bold ${game.revealedIndices.includes(i) ? 'text-[#33ff33]' : 'opacity-10'}`}>
-                          {game.revealedIndices.includes(i) ? char.toUpperCase() : '?'}
-                        </div>
-                        <div className="text-[10px] opacity-40 font-mono">
-                          {game.revealedIndices.includes(i) ? `[${game.correctCode[i]}]` : '[*]'}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               <div className="space-y-4">
                 <h2 className="text-xl flex items-center gap-2">
                   <Info size={18} /> DANE OD OFICERÓW TERENOWYCH:
@@ -446,6 +428,10 @@ export default function App() {
               onClick={(e) => e.stopPropagation()}
               className="helper-modal border-2 border-[#33ff33] bg-[#050505] p-6 max-w-3xl w-full relative shadow-[0_0_30px_rgba(51,255,51,0.15)] overflow-y-auto max-h-[90vh]"
             >
+              <div className="scanlines pointer-events-none"></div>
+              <div className="flicker pointer-events-none"></div>
+              <div className="crt-overlay pointer-events-none"></div>
+
               <div className="flex justify-between items-center mb-6 border-b border-[#33ff33]/30 pb-2">
                 <div className="flex items-center gap-2 text-[#33ff33]">
                   <Cpu size={20} />
@@ -460,6 +446,25 @@ export default function App() {
               </div>
 
               <div className="space-y-8">
+                {/* Terminal Memory moved here */}
+                {game.revealedIndices.length > 0 && (
+                  <section className="bg-[#33ff33]/5 border-2 border-dashed border-[#33ff33]/30 p-4 rounded text-center">
+                    <h3 className="text-xs opacity-50 uppercase tracking-[0.2em] mb-2">Pamięć Terminala: Logi sekwencyjne</h3>
+                    <div className="flex justify-center gap-4">
+                      {game.targetWord.split('').map((char, i) => (
+                        <div key={i} className="flex flex-col items-center">
+                          <div className={`text-2xl font-bold ${game.revealedIndices.includes(i) ? 'text-[#33ff33]' : 'opacity-10'}`}>
+                            {game.revealedIndices.includes(i) ? char.toUpperCase() : '?'}
+                          </div>
+                          <div className="text-[10px] opacity-40 font-mono">
+                            {game.revealedIndices.includes(i) ? `[${game.correctCode[i]}]` : '[*]'}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                )}
+
                 {/* Alphabet Mapping */}
                 <section>
                   <h3 className="text-xs opacity-60 uppercase mb-3 tracking-widest text-center">Tabela Podstawień</h3>
@@ -553,8 +558,6 @@ export default function App() {
                   </p>
                 </section>
               </div>
-              
-              <div className="scanlines pointer-events-none"></div>
             </motion.div>
           </motion.div>
         )}
