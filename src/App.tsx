@@ -316,7 +316,7 @@ export default function App() {
                 <h2 className="text-xl flex items-center gap-2">
                   <Info size={18} /> DANE OD OFICERÓW TERENOWYCH:
                 </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[30vh] overflow-y-auto p-1 border border-[#33ff33]/10 rounded bg-[#050505]/50">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[30vh] overflow-y-auto p-1 border border-[#33ff33]/10 rounded bg-[#050505]/50 custom-scrollbar">
                   {game.puzzleData.map((data, i) => (
                     <motion.div
                       key={i}
@@ -426,7 +426,7 @@ export default function App() {
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
               onClick={(e) => e.stopPropagation()}
-              className="helper-modal border-2 border-[#33ff33] bg-[#050505] p-6 max-w-3xl w-full relative shadow-[0_0_30px_rgba(51,255,51,0.15)] overflow-y-auto max-h-[90vh]"
+              className="helper-modal border-2 border-[#33ff33] bg-[#050505] p-6 max-w-3xl w-full relative shadow-[0_0_30px_rgba(51,255,51,0.15)] overflow-y-auto max-h-[90vh] custom-scrollbar"
             >
               <div className="scanlines pointer-events-none"></div>
               <div className="flicker pointer-events-none"></div>
@@ -573,6 +573,10 @@ export default function App() {
       </footer>
 
       <style>{`
+        .custom-scrollbar {
+          scrollbar-width: thin;
+          scrollbar-color: rgba(51, 255, 51, 0.3) rgba(51, 255, 51, 0.05);
+        }
         .custom-scrollbar::-webkit-scrollbar {
           width: 4px;
           height: 4px;
