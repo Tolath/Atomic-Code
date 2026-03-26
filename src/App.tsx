@@ -82,7 +82,7 @@ export default function App() {
   const initGame = () => {
     const combinedPool = [...FALLBACK_WORDS, ...EXTERNAL_WORDS];
     const wordsPool = combinedPool.filter(w => w.length === WORD_LENGTH);
-    const keysPool = FALLBACK_WORDS.filter(w => w.length >= 4 && w.length <= 6);
+    const keysPool = combinedPool;
 
     const targetWord = wordsPool[Math.floor(Math.random() * wordsPool.length)];
     
