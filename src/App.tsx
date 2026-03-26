@@ -67,13 +67,22 @@ export default function App() {
 
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Globalne kierowanie fokusu do inputów
+  // Globalne kierowanie fokusu do inputów oraz blokowanie utraty fokusu
   useEffect(() => {
     const handleGlobalFocus = (e: Event) => {
       // Nie kradnij fokusu, jeśli użytkownik celowo klika w przycisk
       const target = e.target as HTMLElement;
       if (target.tagName === 'BUTTON' || target.tagName === 'A') return;
+      if (target.tagName === 'INPUT') return;
 
+      const activeInput = isHelperOpen 
+        ? document.getElementById('helper-input') as HTMLInputElement 
+        : inputRef.current;
+
+      activeInput?.focus();
+    };
+
+    const focusAlways = () => {
       if (isHelperOpen) {
         document.getElementById('helper-input')?.focus();
       } else {
@@ -81,10 +90,10 @@ export default function App() {
       }
     };
 
-    window.addEventListener('keydown', handleGlobalFocus);
+    window.addEventListener('keydown', focusAlways);
     window.addEventListener('mousedown', handleGlobalFocus);
     return () => {
-      window.removeEventListener('keydown', handleGlobalFocus);
+      window.removeEventListener('keydown', focusAlways);
       window.removeEventListener('mousedown', handleGlobalFocus);
     };
   }, [isHelperOpen]);
