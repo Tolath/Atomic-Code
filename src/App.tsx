@@ -9,7 +9,7 @@ import { motion, AnimatePresence, Reorder } from 'motion/react';
 import rawWords from './words.txt?raw';
 
 // ======== CONFIGURATION ========
-const WORD_LENGTH = 4;
+const WORD_LENGTH = 5;
 const CONSISTENT_CODE_FOR_SAME_LETTER = true;
 const ALPHABET = "abcdefghijklmnopqrstuvwxyz";
 
@@ -347,7 +347,7 @@ export default function App() {
                 </div>
               </div>
               <button
-                onClick={initGame}
+                onClick={() => setGame(prev => ({ ...prev, status: 'playing', userInput: '' }))}
                 className="mt-8 px-8 py-3 border-2 border-[#33ff33] hover:bg-[#33ff33] hover:text-[#050505] transition-all font-bold uppercase tracking-widest"
               >
                 Ponów Próbę
