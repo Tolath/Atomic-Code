@@ -63,8 +63,16 @@
   }
 
   .terminal-input {
-    @apply bg-transparent border-none outline-none text-[#33ff33] font-mono w-full;
-    text-shadow: 0 0 5px rgba(51, 255, 51, 0.8);
+    @apply bg-transparent border-none outline-none font-mono w-full;
+    caret-color: transparent !important;
+    color: transparent !important;
+    text-shadow: 0 0 0 #33ff33, 0 0 5px rgba(51, 255, 51, 0.8) !important;
+  }
+
+  input {
+    caret-color: transparent !important;
+    color: transparent !important;
+    text-shadow: 0 0 0 #33ff33 !important;
   }
 
   .blink {

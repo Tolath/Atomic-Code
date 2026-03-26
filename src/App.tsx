@@ -484,7 +484,7 @@ export default function App() {
                     Wprowadź Odkodowany Kod
                   </label>
                   <div className="flex justify-center items-center gap-3">
-                    <span className="text-3xl animate-pulse text-[#33ff33]">{">"}</span>
+                    <span className="text-3xl blink text-[#33ff33]">{">"}</span>
                     <input
                       id="helper-input"
                       type="text"
