@@ -48,6 +48,8 @@ interface GameState {
   status: 'idle' | 'playing' | 'success' | 'failure';
   userInput: string;
   cipherAlphabet: string;
+  attempts: number;
+  revealedIndices: number[];
 }
 
 export default function App() {
@@ -58,7 +60,9 @@ export default function App() {
     correctCode: '',
     status: 'idle',
     userInput: '',
-    cipherAlphabet: ''
+    cipherAlphabet: '',
+    attempts: 0,
+    revealedIndices: []
   });
   const [isHelperOpen, setIsHelperOpen] = useState(false);
 
@@ -175,7 +179,9 @@ export default function App() {
       correctCode,
       status: 'playing',
       userInput: '',
-      cipherAlphabet
+      cipherAlphabet,
+      attempts: 0,
+      revealedIndices: []
     });
     setWorkbenchLetters([]);
   };
@@ -218,7 +224,26 @@ export default function App() {
     if (game.userInput === game.correctCode) {
       setGame(prev => ({ ...prev, status: 'success' }));
     } else {
-      setGame(prev => ({ ...prev, status: 'failure' }));
+      const nextAttempts = game.attempts + 1;
+      
+      if (nextAttempts >= 3) {
+        setGame(prev => ({ ...prev, status: 'failure', attempts: nextAttempts }));
+      } else {
+        // Znajdź nieodkryte jeszcze pozycje
+        const unrevealed = [];
+        for (let i = 0; i < WORD_LENGTH; i++) {
+          if (!game.revealedIndices.includes(i)) unrevealed.push(i);
+        }
+        // Wylosuj jedną pozycję do odkrycia
+        const randomIdx = unrevealed[Math.floor(Math.random() * unrevealed.length)];
+        
+        setGame(prev => ({
+          ...prev,
+          attempts: nextAttempts,
+          revealedIndices: [...prev.revealedIndices, randomIdx],
+          userInput: '' // Czyścimy input po błędzie
+        }));
+      }
     }
   };
 
@@ -262,19 +287,48 @@ export default function App() {
               exit={{ opacity: 0 }}
               className="space-y-6"
             >
-              <div className="bg-[#33ff33]/10 p-4 border border-[#33ff33]/30 rounded">
-                <p className="text-lg">
-                  <span className="opacity-60">KLUCZ SZYFRU DNIA:</span>{" "}
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setIsHelperOpen(true); }}
-                    className="font-bold underline decoration-double cursor-pointer hover:bg-[#33ff33] hover:text-[#050505] transition-colors px-2 py-0.5 rounded animate-pulse"
-                    title="Otwórz Dekryptor"
-                  >
-                    {game.keyWord}
-                  </button>
-                  <span className="text-xs ml-3 opacity-40 italic">[KLIKNIJ KLUCZ, ABY OTWORZYĆ POMOC]</span>
-                </p>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex-1 bg-[#33ff33]/10 p-4 border border-[#33ff33]/30 rounded">
+                  <p className="text-lg">
+                    <span className="opacity-60">KLUCZ SZYFRU:</span>{" "}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setIsHelperOpen(true); }}
+                      className="font-bold underline cursor-pointer hover:bg-[#33ff33] hover:text-[#050505] transition-colors px-2 py-0.5 rounded animate-pulse"
+                    >
+                      {game.keyWord}
+                    </button>
+                  </p>
+                </div>
+                <div className="bg-[#33ff33]/5 p-4 border border-[#33ff33]/30 rounded flex items-center gap-4 min-w-[180px]">
+                  <span className="text-xs opacity-60 uppercase">Dostępy:</span>
+                  <div className="flex gap-2">
+                    {[...Array(3)].map((_, i) => (
+                      <div 
+                        key={i} 
+                        className={`w-4 h-4 border ${i < (3 - game.attempts) ? 'bg-[#33ff33] border-[#33ff33]' : 'bg-transparent border-[#33ff33]/20'}`}
+                      />
+                    ))}
+                  </div>
+                </div>
               </div>
+
+              {game.revealedIndices.length > 0 && (
+                <div className="bg-[#33ff33]/5 border-2 border-dashed border-[#33ff33]/30 p-4 rounded text-center">
+                  <h3 className="text-xs opacity-50 uppercase tracking-[0.2em] mb-2">Pamięć Terminala: Logi sekwencyjne</h3>
+                  <div className="flex justify-center gap-4">
+                    {game.targetWord.split('').map((char, i) => (
+                      <div key={i} className="flex flex-col items-center">
+                        <div className={`text-2xl font-bold ${game.revealedIndices.includes(i) ? 'text-[#33ff33]' : 'opacity-10'}`}>
+                          {game.revealedIndices.includes(i) ? char.toUpperCase() : '?'}
+                        </div>
+                        <div className="text-[10px] opacity-40 font-mono">
+                          {game.revealedIndices.includes(i) ? `[${game.correctCode[i]}]` : '[*]'}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-4">
                 <h2 className="text-xl flex items-center gap-2">
@@ -313,8 +367,7 @@ export default function App() {
                       value={game.userInput}
                       onChange={handleInputChange}
                       className="terminal-input text-2xl tracking-[0.5em] w-48"
-                      autoFocus
-                      placeholder={"_".repeat(WORD_LENGTH)}
+                      placeholder={game.correctCode.split('').map((c, i) => game.revealedIndices.includes(i) ? c : '_').join('')}
                     />
                   </div>
                   <button 
@@ -357,20 +410,19 @@ export default function App() {
               animate={{ scale: 1, opacity: 1 }}
               className="flex-1 flex flex-col items-center justify-center text-center gap-6"
             >
-              <ShieldAlert size={80} className="text-red-500 animate-bounce" />
+              <ShieldAlert size={80} className="text-red-500" />
               <div className="space-y-2">
                 <h2 className="text-4xl font-bold tracking-widest text-red-500">BŁĄD</h2>
-                <p className="text-xl uppercase">Kod nieprawidłowy. Dostęp zablokowany.</p>
+                <p className="text-xl uppercase">System zablokowany. Zbyt wiele prób.</p>
                 <div className="bg-red-500/10 border border-red-500/30 p-4 mt-4 rounded">
-                  <p className="text-lg">Prawidłowy kod: <span className="font-bold">{game.correctCode}</span></p>
-                  <p className="text-lg">Słowo docelowe: <span className="font-bold">{game.targetWord.toUpperCase()}</span></p>
+                  <p className="text-lg opacity-60 uppercase italic text-red-500">Krytyczne naruszenie bezpieczeństwa</p>
                 </div>
               </div>
               <button
-                onClick={() => setGame(prev => ({ ...prev, status: 'playing', userInput: '' }))}
+                onClick={initGame}
                 className="mt-8 px-8 py-3 border-2 border-[#33ff33] hover:bg-[#33ff33] hover:text-[#050505] transition-all font-bold uppercase tracking-widest"
               >
-                Ponów Próbę
+                Pełny Reset Systemu
               </button>
             </motion.div>
           )}
