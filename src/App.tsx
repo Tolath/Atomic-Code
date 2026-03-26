@@ -64,11 +64,6 @@ export default function App() {
 
   // States for the interactive helper workbench
   const [workbenchLetters, setWorkbenchLetters] = useState<(PuzzleItem & { decoded: string, id: string })[]>([]);
-  const [draftWord, setDraftWord] = useState('');
-
-  useEffect(() => {
-    setDraftWord('');
-  }, [game.targetWord]);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -461,17 +456,6 @@ export default function App() {
                       </p>
                     </div>
                   )}
-
-                  <div className="flex flex-col items-center gap-2">
-                    <span className="text-xs opacity-50 uppercase">Brudnopis słowa:</span>
-                    <input 
-                      type="text"
-                      placeholder="Tutaj wpisz słowo..."
-                      value={draftWord}
-                      onChange={(e) => setDraftWord(e.target.value.toUpperCase())}
-                      className="bg-transparent border border-[#33ff33]/30 px-4 py-1 text-center tracking-[0.2em] outline-none focus:border-[#33ff33]"
-                    />
-                  </div>
                 </section>
 
                 {/* Input Mirror */}
