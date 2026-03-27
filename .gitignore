@@ -2,5 +2,5 @@ node_modules
 dist
 .env
 .env.local
-src/words.txt
+src/words.tx
 *.local
