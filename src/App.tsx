@@ -12,9 +12,14 @@ import rawWords from './words.txt?raw';
 const HUMM_OVERLAP = 0.2; // Ile sekund przed końcem aktualnego dźwięku odpalić kolejny bufor
 const HUMM_TARGET_VOLUME = 1.0;
 
+// ======== BOOT CONFIGURATION ========
+const BOOT_BLACK_DURATION = 8000; // Czas całkowitej ciemności (ms)
+const BOOT_FADE_DURATION = 1000;  // Czas rozjaśniania (ms)
+
 // ======== CONFIGURATION ========
 const WORD_LENGTH = 5;
 const CONSISTENT_CODE_FOR_SAME_LETTER = true;
+const UNCOVER_GUESS_LETTERS = true; // Jeśli true, odkrywa wszystkie poprawnie trafione cyfry na swoich pozycjach
 const ALPHABET = "abcdefghijklmnopqrstuvwxyz";
 
 const FALLBACK_WORDS = [
@@ -68,6 +73,7 @@ export default function App() {
     attempts: 0,
     revealedIndices: []
   });
+  const [bootStatus, setBootStatus] = useState<'black' | 'fading' | 'ready'>('black');
   const [isHelperOpen, setIsHelperOpen] = useState(false);
 
   // States for the interactive helper workbench
@@ -109,6 +115,17 @@ export default function App() {
       window.removeEventListener('mousedown', handleGlobalFocus);
     };
   }, [isHelperOpen]);
+
+  // Realistyczny startup wizualny (ciemność -> rozjaśnienie)
+  useEffect(() => {
+    const fadeTimer = setTimeout(() => setBootStatus('fading'), BOOT_BLACK_DURATION);
+    const readyTimer = setTimeout(() => setBootStatus('ready'), BOOT_BLACK_DURATION + BOOT_FADE_DURATION);
+    
+    return () => {
+      clearTimeout(fadeTimer);
+      clearTimeout(readyTimer);
+    };
+  }, []);
 
   // Audio for background music (startup and humm) with fade-in
   useEffect(() => {
@@ -343,18 +360,31 @@ export default function App() {
       if (nextAttempts >= 3) {
         setGame(prev => ({ ...prev, status: 'failure', attempts: nextAttempts }));
       } else {
-        // Znajdź nieodkryte jeszcze pozycje
-        const unrevealed = [];
-        for (let i = 0; i < WORD_LENGTH; i++) {
-          if (!game.revealedIndices.includes(i)) unrevealed.push(i);
+        let newRevealedIndices = [...game.revealedIndices];
+
+        if (UNCOVER_GUESS_LETTERS) {
+          // Odkryj wszystkie cyfry, które gracz wpisał poprawnie na danej pozycji
+          for (let i = 0; i < game.userInput.length; i++) {
+            if (game.userInput[i] === game.correctCode[i] && !newRevealedIndices.includes(i)) {
+              newRevealedIndices.push(i);
+            }
+          }
+        } else {
+          // Oryginalna logika: odkryj 1 zupełnie losową pozycję jako hint
+          const unrevealed = [];
+          for (let i = 0; i < WORD_LENGTH; i++) {
+            if (!game.revealedIndices.includes(i)) unrevealed.push(i);
+          }
+          if (unrevealed.length > 0) {
+            const randomIdx = unrevealed[Math.floor(Math.random() * unrevealed.length)];
+            newRevealedIndices.push(randomIdx);
+          }
         }
-        // Wylosuj jedną pozycję do odkrycia
-        const randomIdx = unrevealed[Math.floor(Math.random() * unrevealed.length)];
         
         setGame(prev => ({
           ...prev,
           attempts: nextAttempts,
-          revealedIndices: [...prev.revealedIndices, randomIdx],
+          revealedIndices: newRevealedIndices,
           userInput: '' // Czyścimy input po błędzie
         }));
       }
@@ -368,6 +398,16 @@ export default function App() {
 
   return (
     <div className="terminal-screen">
+      {/* Startup Overlay (3s black + 1s fade) */}
+      {bootStatus !== 'ready' && (
+        <div 
+          className={`fixed inset-0 z-[100] bg-[#050505] transition-opacity pointer-events-none ${
+            bootStatus === 'fading' ? 'opacity-0' : 'opacity-100'
+          }`}
+          style={{ transitionDuration: `${BOOT_FADE_DURATION}ms` }}
+        />
+      )}
+
       <div className="scanlines"></div>
       <div className="flicker"></div>
       <div className="crt-overlay"></div>
