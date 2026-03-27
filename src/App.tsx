@@ -8,6 +8,10 @@ import { Terminal, ShieldAlert, ShieldCheck, RefreshCw, Info, X, Cpu, MoveHorizo
 import { motion, AnimatePresence, Reorder } from 'motion/react';
 import rawWords from './words.txt?raw';
 
+// ======== AUDIO CONFIGURATION ========
+const HUMM_OVERLAP = 0.2; // Ile sekund przed końcem aktualnego dźwięku odpalić kolejny bufor
+const HUMM_TARGET_VOLUME = 1.0;
+
 // ======== CONFIGURATION ========
 const WORD_LENGTH = 5;
 const CONSISTENT_CODE_FOR_SAME_LETTER = true;
@@ -69,7 +73,8 @@ export default function App() {
   // States for the interactive helper workbench
   const audioStarted = useRef(false);
   const startupSoundRef = useRef<HTMLAudioElement>(null);
-  const hummSoundRef = useRef<HTMLAudioElement>(null);
+  const humm1Ref = useRef<HTMLAudioElement>(null);
+  const humm2Ref = useRef<HTMLAudioElement>(null);
   const [workbenchLetters, setWorkbenchLetters] = useState<(PuzzleItem & { decoded: string, id: string })[]>([]);
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -111,42 +116,71 @@ export default function App() {
     if (audioStarted.current) return;
 
     const startupAudio = startupSoundRef.current;
-    const hummAudio = hummSoundRef.current;
+    const humms = [humm1Ref.current, humm2Ref.current];
     let fadeInterval: NodeJS.Timeout | null = null; // To store the interval ID for fading
     let crossfadeTimeout: NodeJS.Timeout | null = null; 
+    let loopInterval: NodeJS.Timeout | null = null;
+    let currentHummIdx = 0;
+    let loopStarted = false;
 
-    if (startupAudio && hummAudio) {
+    if (startupAudio && humms[0] && humms[1]) {
       audioStarted.current = true;
 
-      // Konfiguracja humm
-      hummAudio.loop = true;
-      hummAudio.volume = 0;
-      hummAudio.muted = false;
+      // Konfiguracja buforów
+      humms.forEach(h => {
+        if (h) { h.volume = 0; h.muted = false; h.loop = false; }
+      });
 
       // Function to gradually increase hummAudio volume
-      const fadeInHumm = () => {
+      const fadeInHumm = (audio: HTMLAudioElement) => {
         if (fadeInterval) clearInterval(fadeInterval);
         
-        let vol = 0;
-        const targetVolume = 1; 
+        let vol = audio.volume;
         const step = 0.05; // Mniej kroków, ale większe, by uniknąć glitchy
 
         fadeInterval = setInterval(() => {
           vol += step;
-          if (vol >= targetVolume) {
-            hummAudio.volume = targetVolume;
+          if (vol >= HUMM_TARGET_VOLUME) {
+            audio.volume = HUMM_TARGET_VOLUME;
             if (fadeInterval) clearInterval(fadeInterval);
           } else {
-            hummAudio.volume = vol;
+            audio.volume = vol;
           }
         }, 50);
+      };
+
+      const startHummLoop = () => {
+        const playNext = () => {
+          const nextAudio = humms[currentHummIdx];
+          if (nextAudio) {
+            nextAudio.currentTime = 0;
+            nextAudio.play().catch(() => {});
+            if (nextAudio.volume === 0) fadeInHumm(nextAudio);
+          }
+          
+          if (nextAudio) {
+            const duration = nextAudio.duration || 10;
+            const timeToNext = (duration - HUMM_OVERLAP) * 1000;
+            
+            loopInterval = setTimeout(() => {
+              currentHummIdx = 1 - currentHummIdx;
+              playNext();
+            }, timeToNext);
+          }
+        };
+        playNext();
+      };
+
+      const triggerHumm = () => {
+        if (loopStarted) return;
+        loopStarted = true;
+        startHummLoop();
       };
 
       const startSequence = () => {
         startupAudio.play().catch(e => {
           console.warn("[Audio] Startup blocked, playing humm immediately.");
-          hummAudio.play().catch(() => {});
-          fadeInHumm();
+          triggerHumm();
         });
 
         // Planowanie cross-fade na 1 sekundę przed końcem startupu
@@ -154,8 +188,7 @@ export default function App() {
           const duration = startupAudio.duration * 1000;
           const offset = 1000; // zacznij 1s przed końcem
           crossfadeTimeout = setTimeout(() => {
-            hummAudio.play().catch(() => {});
-            fadeInHumm();
+            triggerHumm();
           }, Math.max(0, duration - offset));
         };
 
@@ -167,17 +200,15 @@ export default function App() {
 
       startupAudio.onended = () => {
         if (crossfadeTimeout) clearTimeout(crossfadeTimeout);
-        if (hummAudio.paused) {
-          hummAudio.play().catch(() => {});
-          fadeInHumm();
-        }
+        triggerHumm();
+      };
+
+      return () => {
+        if (crossfadeTimeout) clearTimeout(crossfadeTimeout);
+        if (fadeInterval) clearInterval(fadeInterval);
+        if (loopInterval) clearTimeout(loopInterval);
       };
     }
-
-    return () => {
-      if (crossfadeTimeout) clearTimeout(crossfadeTimeout);
-      if (fadeInterval) clearInterval(fadeInterval);
-    };
   }, []);
   // Audio element for click sound
   const clickSoundRef = useRef<HTMLAudioElement>(null);
@@ -481,6 +512,9 @@ export default function App() {
                 <p className="text-xl uppercase">System zablokowany. Zbyt wiele prób.</p>
                 <div className="bg-red-500/10 border border-red-500/30 p-4 mt-4 rounded">
                   <p className="text-lg opacity-60 uppercase italic text-red-500">Krytyczne naruszenie bezpieczeństwa</p>
+                  <p className="mt-2 text-sm opacity-80 uppercase">
+                    OCZEKIWANE HASŁO: <span className="font-bold text-red-500 underline decoration-double">{game.targetWord.toUpperCase()}</span>
+                  </p>
                 </div>
               </div>
               <button
@@ -665,9 +699,8 @@ export default function App() {
       <audio ref={startupSoundRef} src="/sounds/startup.mp3" preload="auto" className="hidden">
         Your browser does not support the audio element.
       </audio>
-      <audio ref={hummSoundRef} src="/sounds/humm.mp3" preload="auto" loop className="hidden">
-        Your browser does not support the audio element.
-      </audio>
+      <audio ref={humm1Ref} src="/sounds/humm.mp3" preload="auto" className="hidden" />
+      <audio ref={humm2Ref} src="/sounds/humm.mp3" preload="auto" className="hidden" />
 
 
 
