@@ -81,7 +81,9 @@ export default function App() {
   const startupSoundRef = useRef<HTMLAudioElement>(null);
   const humm1Ref = useRef<HTMLAudioElement>(null);
   const humm2Ref = useRef<HTMLAudioElement>(null);
-  const [workbenchLetters, setWorkbenchLetters] = useState<(PuzzleItem & { decoded: string, id: string })[]>([]);
+const [workbenchLetters, setWorkbenchLetters] = useState<(PuzzleItem & { decoded: string, id: string })[]>([]);
+
+  const [wrongLetter, setWrongLetter] = useState<string | null>(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -233,7 +235,15 @@ export default function App() {
     clickSoundRef.current?.play();
   };
 
-// Debug helper opening state
+// Clear wrongLetter feedback after 2s
+  useEffect(() => {
+    if (wrongLetter) {
+      const timer = setTimeout(() => setWrongLetter(null), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [wrongLetter]);
+
+  // Debug helper opening state
   useEffect(() => {
     console.log(`[Terminal] Decryptor state: ${isHelperOpen ? 'OPEN' : 'CLOSED'}`);
   }, [isHelperOpen]);
@@ -323,28 +333,49 @@ console.error(`Error: No ${WORD_LENGTH}-letter words in FALLBACK_WORDS pool.`);
 
   const toggleWorkbenchLetter = (originalChar: string) => {
     const upperChar = originalChar.toUpperCase();
+    const alphaIdx = ALPHABET.indexOf(originalChar);
+    const cipherChar = game.cipherAlphabet[alphaIdx];
     const allAvailable = game.puzzleData.map((p, idx) => {
-      const alphaIdx = game.cipherAlphabet.indexOf(p.char.toLowerCase());
+      const decodedIdx = game.cipherAlphabet.indexOf(p.char.toLowerCase());
       return {
         ...p,
-        decoded: ALPHABET[alphaIdx].toUpperCase(),
+        decoded: ALPHABET[decodedIdx].toUpperCase(),
         id: `letter-${idx}`
       };
     });
 
     const instancesOfChar = allAvailable.filter(item => item.decoded === upperChar);
-    if (instancesOfChar.length === 0) return;
-
+    const isWrong = instancesOfChar.length === 0;
+    
+    // Always toggle, create dummy for wrong letters
     setWorkbenchLetters(prev => {
       const alreadyIn = prev.filter(item => item.decoded === upperChar);
-      if (alreadyIn.length < instancesOfChar.length) {
-        const nextToAdd = instancesOfChar.find(inst => !prev.some(p => p.id === inst.id));
-        if (nextToAdd) return [...prev, nextToAdd];
+      let newLetters = [...prev];
+      
+      if (alreadyIn.length > 0) {
+        // Remove one instance (unselecting - no wrong trigger)
+        const toRemove = alreadyIn[0];
+        newLetters = prev.filter(item => item.id !== toRemove.id);
       } else {
-        const toRemove = prev.find(item => item.decoded === upperChar);
-        return prev.filter(item => item.id !== toRemove?.id);
+        // Adding (selecting)
+        let toAdd;
+        if (isWrong) {
+          // Dummy for wrong letter
+          toAdd = {
+            char: cipherChar.toUpperCase(),
+            digit: '?',
+            decoded: upperChar,
+            id: `dummy-${upperChar}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+          };
+          setWrongLetter(upperChar); // Trigger indication only on select wrong
+        } else {
+          const nextToAdd = instancesOfChar.find(inst => !prev.some(p => p.id === inst.id));
+          if (nextToAdd) toAdd = nextToAdd;
+        }
+        if (toAdd) newLetters.push(toAdd);
       }
-      return prev;
+      
+      return newLetters;
     });
   };
 
@@ -635,8 +666,11 @@ console.error(`Error: No ${WORD_LENGTH}-letter words in FALLBACK_WORDS pool.`);
                           <button 
                             key={i} 
                             onClick={() => toggleWorkbenchLetter(char)}
-                            onMouseDown={playClickSound} // Play sound on click
-                            className={`border border-[#33ff33]/30 transition-all cursor-pointer ${isInWorkbench ? 'bg-[#33ff33] text-[#050505]' : 'hover:bg-[#33ff33]/20'}`}
+                            onMouseDown={playClickSound}
+                            className={`border border-[#33ff33]/30 transition-all cursor-pointer hover:bg-[#33ff33]/20 
+                              ${isInWorkbench ? 'bg-[#33ff33] text-[#050505]' : ''}
+                              ${wrongLetter === upperChar ? 'animate-shake bg-red-600/80 text-white shadow-lg shadow-red-500/50 ring-2 ring-red-500/50' : ''}`}
+                            title={wrongLetter === upperChar ? 'Wrong selection - not in officer data (? code)' : isInWorkbench ? 'Drag to reorder / click to remove' : 'Click to add to workbench'}
                           >
                             <div className={`p-1 text-[10px] border-b border-[#33ff33]/10 uppercase ${isInWorkbench ? 'text-[#050505]/60' : ''}`}>{char}</div>
                             <div className="p-1 font-bold text-lg uppercase">{game.cipherAlphabet[i]}</div>
@@ -761,6 +795,14 @@ console.error(`Error: No ${WORD_LENGTH}-letter words in FALLBACK_WORDS pool.`);
         }
         .grid-cols-13 {
           grid-template-columns: repeat(13, minmax(0, 1fr));
+        }
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          10%, 30%, 50%, 70%, 90% { transform: translateX(-2px); }
+          20%, 40%, 60%, 80% { transform: translateX(2px); }
+        }
+        .animate-shake {
+          animation: shake 0.5s cubic-bezier(.36,.07,.19,.97);
         }
       `}</style>
     </div>
