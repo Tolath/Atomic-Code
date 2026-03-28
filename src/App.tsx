@@ -9,17 +9,17 @@ import { motion, AnimatePresence, Reorder } from 'motion/react';
 import rawWords from './words.txt?raw';
 
 // ======== AUDIO CONFIGURATION ========
-const HUMM_OVERLAP = 0.2; // Ile sekund przed końcem aktualnego dźwięku odpalić kolejny bufor
+const HUMM_OVERLAP = 0.2; // Seconds before end of current sound to trigger next buffer
 const HUMM_TARGET_VOLUME = 1.0;
 
 // ======== BOOT CONFIGURATION ========
-const BOOT_BLACK_DURATION = 8000; // Czas całkowitej ciemności (ms)
-const BOOT_FADE_DURATION = 1000;  // Czas rozjaśniania (ms)
+const BOOT_BLACK_DURATION = 8000; // Total blackout time (ms)
+const BOOT_FADE_DURATION = 1000;  // Fade-in time (ms)
 
 // ======== CONFIGURATION ========
 const WORD_LENGTH = 5;
 const CONSISTENT_CODE_FOR_SAME_LETTER = true;
-const UNCOVER_GUESS_LETTERS = true; // Jeśli true, odkrywa wszystkie poprawnie trafione cyfry na swoich pozycjach
+const UNCOVER_GUESS_LETTERS = true; // If true, reveals all correctly guessed digits in their positions
 const ALPHABET = "abcdefghijklmnopqrstuvwxyz";
 
 const FALLBACK_WORDS = [
@@ -42,7 +42,7 @@ const EXTERNAL_WORDS = rawWords
   ? rawWords.split(/\r?\n/).map(w => w.trim().toLowerCase()).filter(w => w.length > 0)
   : [];
 
-console.log(`[Terminal] Załadowano zewnętrzną bazę słów: ${EXTERNAL_WORDS.length} pozycji.`);
+console.log(`[Terminal] Loaded external word database: ${EXTERNAL_WORDS.length} entries.`);
 
 interface PuzzleItem {
   char: string;
@@ -85,10 +85,10 @@ export default function App() {
 
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Globalne kierowanie fokusu do inputów oraz blokowanie utraty fokusu
+// Global focus management for inputs and prevent focus loss
   useEffect(() => {
     const handleGlobalFocus = (e: Event) => {
-      // Nie kradnij fokusu, jeśli użytkownik celowo klika w przycisk
+// Don't steal focus if user intentionally clicks button
       const target = e.target as HTMLElement;
       if (target.tagName === 'BUTTON' || target.tagName === 'A') return;
       if (target.tagName === 'INPUT') return;
@@ -116,7 +116,7 @@ export default function App() {
     };
   }, [isHelperOpen]);
 
-  // Realistyczny startup wizualny (ciemność -> rozjaśnienie)
+// Realistic visual boot sequence (blackout -> fade-in)
   useEffect(() => {
     const fadeTimer = setTimeout(() => setBootStatus('fading'), BOOT_BLACK_DURATION);
     const readyTimer = setTimeout(() => setBootStatus('ready'), BOOT_BLACK_DURATION + BOOT_FADE_DURATION);
@@ -129,7 +129,7 @@ export default function App() {
 
   // Audio for background music (startup and humm) with fade-in
   useEffect(() => {
-    // Zapobiega podwójnemu odpaleniu w StrictMode
+// Prevents double-triggering in StrictMode
     if (audioStarted.current) return;
 
     const startupAudio = startupSoundRef.current;
@@ -143,7 +143,7 @@ export default function App() {
     if (startupAudio && humms[0] && humms[1]) {
       audioStarted.current = true;
 
-      // Konfiguracja buforów
+// Buffer configuration
       humms.forEach(h => {
         if (h) { h.volume = 0; h.muted = false; h.loop = false; }
       });
@@ -153,7 +153,7 @@ export default function App() {
         if (fadeInterval) clearInterval(fadeInterval);
         
         let vol = audio.volume;
-        const step = 0.05; // Mniej kroków, ale większe, by uniknąć glitchy
+        const step = 0.05; // Fewer but larger steps to avoid glitches
 
         fadeInterval = setInterval(() => {
           vol += step;
@@ -200,10 +200,10 @@ export default function App() {
           triggerHumm();
         });
 
-        // Planowanie cross-fade na 1 sekundę przed końcem startupu
+// Schedule crossfade 1s before startup ends
         const setupCrossfade = () => {
           const duration = startupAudio.duration * 1000;
-          const offset = 1000; // zacznij 1s przed końcem
+          const offset = 1000; // start 1s before end
           crossfadeTimeout = setTimeout(() => {
             triggerHumm();
           }, Math.max(0, duration - offset));
@@ -233,9 +233,9 @@ export default function App() {
     clickSoundRef.current?.play();
   };
 
-  // Debugowanie otwierania pomocnika
+// Debug helper opening state
   useEffect(() => {
-    console.log(`[Terminal] Stan dekryptora: ${isHelperOpen ? 'OTWARTY' : 'ZAMKNIĘTY'}`);
+    console.log(`[Terminal] Decryptor state: ${isHelperOpen ? 'OPEN' : 'CLOSED'}`);
   }, [isHelperOpen]);
 
   const generateFullAlphabet = (key: string) => {
@@ -253,7 +253,7 @@ export default function App() {
     const targetWord = wordsPool[Math.floor(Math.random() * wordsPool.length)];
     
     if (!targetWord) {
-      console.error(`Błąd: Brak słów o długości ${WORD_LENGTH} w puli FALLBACK_WORDS.`);
+console.error(`Error: No ${WORD_LENGTH}-letter words in FALLBACK_WORDS pool.`);
       return;
     }
 
@@ -279,7 +279,7 @@ export default function App() {
       puzzleData.push({ char: cipherChar.toUpperCase(), digit });
     }
 
-    // Shuffling puzzle data
+// Shuffle puzzle data
     const shuffledPuzzle = [...puzzleData].sort(() => Math.random() - 0.5);
 
     // Calculate correct code
@@ -363,14 +363,14 @@ export default function App() {
         let newRevealedIndices = [...game.revealedIndices];
 
         if (UNCOVER_GUESS_LETTERS) {
-          // Odkryj wszystkie cyfry, które gracz wpisał poprawnie na danej pozycji
+// Reveal all digits player entered correctly in position
           for (let i = 0; i < game.userInput.length; i++) {
             if (game.userInput[i] === game.correctCode[i] && !newRevealedIndices.includes(i)) {
               newRevealedIndices.push(i);
             }
           }
         } else {
-          // Oryginalna logika: odkryj 1 zupełnie losową pozycję jako hint
+// Original logic: reveal 1 completely random position as hint
           const unrevealed = [];
           for (let i = 0; i < WORD_LENGTH; i++) {
             if (!game.revealedIndices.includes(i)) unrevealed.push(i);
@@ -385,7 +385,7 @@ export default function App() {
           ...prev,
           attempts: nextAttempts,
           revealedIndices: newRevealedIndices,
-          userInput: '' // Czyścimy input po błędzie
+// Clear input after error
         }));
       }
     }
@@ -426,8 +426,8 @@ export default function App() {
       {/* Main Content */}
       <main className="flex-1 flex flex-col gap-4 z-40 max-w-3xl mx-auto w-full overflow-y-auto pr-2 custom-scrollbar">
         <div className="text-center mb-4">
-          <h1 className="text-3xl font-bold tracking-tighter uppercase mb-1">
-            Terminal Aktywacji Atomówki
+<h1 className="text-3xl font-bold tracking-tighter uppercase mb-1">
+            Nuclear Activation Terminal
           </h1>
           <div className="h-px w-full bg-[#33ff33] opacity-30"></div>
         </div>
@@ -444,7 +444,7 @@ export default function App() {
               <div className="flex flex-col sm:flex-row gap-4">
                 <div className="flex-1 bg-[#33ff33]/10 p-4 border border-[#33ff33]/30 rounded">
                   <p className="text-lg">
-                    <span className="opacity-60">KLUCZ SZYFRU:</span>{" "}
+                    <span className="opacity-60">CIPHER KEY:</span>{" "}
                     <button
                       onClick={(e) => { e.stopPropagation(); setIsHelperOpen(true); }}
                       className="font-bold underline cursor-pointer hover:bg-[#33ff33] hover:text-[#050505] transition-colors px-2 py-0.5 rounded animate-pulse"
@@ -454,7 +454,7 @@ export default function App() {
                   </p>
                 </div>
                 <div className="bg-[#33ff33]/5 p-4 border border-[#33ff33]/30 rounded flex items-center gap-4 min-w-[180px]">
-                  <span className="text-xs opacity-60 uppercase">Dostępy:</span>
+                  <span className="text-xs opacity-60 uppercase">ACCESSES:</span>
                   <div className="flex gap-2">
                     {[...Array(3)].map((_, i) => (
                       <div 
@@ -468,7 +468,7 @@ export default function App() {
 
               <div className="space-y-4">
                 <h2 className="text-xl flex items-center gap-2">
-                  <Info size={18} /> DANE OD OFICERÓW TERENOWYCH:
+                  <Info size={18} /> FIELD OFFICER DATA:
                 </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[30vh] overflow-y-auto p-1 border border-[#33ff33]/10 rounded bg-[#050505]/50 custom-scrollbar">
                   {game.puzzleData.map((data, i) => (
@@ -479,9 +479,9 @@ export default function App() {
                       transition={{ delay: i * 0.1 }}
                       className="border border-[#33ff33]/20 p-3 flex justify-between items-center hover:bg-[#33ff33]/5 transition-colors"
                     >
-                      <span className="opacity-60">Oficer {i + 1}:</span>
+                      <span className="opacity-60">Officer {i + 1}:</span>
                       <span className="text-xl">
-                        Litera '<span className="font-bold">{data.char}</span>', Kod: <span className="font-bold">{data.digit}</span>
+                        Letter '<span className="font-bold">{data.char}</span>', Code: <span className="font-bold">{data.digit}</span>
                       </span>
                     </motion.div>
                   ))}
@@ -490,11 +490,11 @@ export default function App() {
 
               <div className="mt-8 pt-6 border-t border-[#33ff33]/20">
                 <p className="text-sm opacity-70 mb-4 italic">
-                  WSKAZÓWKA: Zbuduj alfabet (KLUCZ + reszta). Odkoduj litery oficerów, ułóż z nich słowo, a potem wpisz cyfry w kolejności liter tego słowa.
+                  HINT: Build alphabet (KEY + remainder). Decode officer letters, arrange into word, then enter digits in letter order.
                 </p>
 
                 <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-                  <label className="text-lg">WPISZ {WORD_LENGTH}-CYFROWY KOD AKTYWACJI:</label>
+                  <label className="text-lg">ENTER {WORD_LENGTH}-DIGIT ACTIVATION CODE:</label>
                   <div className="flex items-center gap-2 text-2xl">
                     <span className="blink">{">"}</span>
                     <input
@@ -526,15 +526,15 @@ export default function App() {
             >
               <ShieldCheck size={80} className="text-[#33ff33] animate-pulse" />
               <div className="space-y-2">
-                <h2 className="text-4xl font-bold tracking-widest text-[#33ff33]">SUKCES</h2>
-                <p className="text-xl uppercase">Kod poprawny. Procedura startowa rozpoczęta!</p>
-                <p className="text-lg opacity-80">Odkodowane słowo: <span className="font-bold underline">{game.targetWord.toUpperCase()}</span></p>
+                <h2 className="text-4xl font-bold tracking-widest text-[#33ff33]">SUCCESS</h2>
+                <p className="text-xl uppercase">Code accepted. Launch sequence initiated!</p>
+                <p className="text-lg opacity-80">Decoded word: <span className="font-bold underline">{game.targetWord.toUpperCase()}</span></p>
               </div>
               <button
                 onClick={initGame}
                 className="mt-8 px-8 py-3 border-2 border-[#33ff33] hover:bg-[#33ff33] hover:text-[#050505] transition-all font-bold uppercase tracking-widest"
               >
-                Restart Terminala
+                Restart Terminal
               </button>
             </motion.div>
           )}
@@ -548,12 +548,12 @@ export default function App() {
             >
               <ShieldAlert size={80} className="text-red-500" />
               <div className="space-y-2">
-                <h2 className="text-4xl font-bold tracking-widest text-red-500">BŁĄD</h2>
-                <p className="text-xl uppercase">System zablokowany. Zbyt wiele prób.</p>
+                <h2 className="text-4xl font-bold tracking-widest text-red-500">ERROR</h2>
+                <p className="text-xl uppercase">System locked. Too many attempts.</p>
                 <div className="bg-red-500/10 border border-red-500/30 p-4 mt-4 rounded">
-                  <p className="text-lg opacity-60 uppercase italic text-red-500">Krytyczne naruszenie bezpieczeństwa</p>
+                  <p className="text-lg opacity-60 uppercase italic text-red-500">CRITICAL SECURITY BREACH</p>
                   <p className="mt-2 text-sm opacity-80 uppercase">
-                    OCZEKIWANE HASŁO: <span className="font-bold text-red-500 underline decoration-double">{game.targetWord.toUpperCase()}</span>
+                    EXPECTED PASSWORD: <span className="font-bold text-red-500 underline decoration-double">{game.targetWord.toUpperCase()}</span>
                   </p>
                 </div>
               </div>
@@ -561,7 +561,7 @@ export default function App() {
                 onClick={initGame}
                 className="mt-8 px-8 py-3 border-2 border-[#33ff33] hover:bg-[#33ff33] hover:text-[#050505] transition-all font-bold uppercase tracking-widest"
               >
-                Pełny Reset Systemu
+                Full System Reset
               </button>
             </motion.div>
           )}
@@ -606,7 +606,7 @@ export default function App() {
                 {/* Terminal Memory moved here */}
                 {game.revealedIndices.length > 0 && (
                   <section className="bg-[#33ff33]/5 border-2 border-dashed border-[#33ff33]/30 p-4 rounded text-center">
-                    <h3 className="text-xs opacity-50 uppercase tracking-[0.2em] mb-2">Pamięć Terminala: Logi sekwencyjne</h3>
+                <h3 className="text-xs opacity-50 uppercase tracking-[0.2em] mb-2">Terminal Memory: Sequential Logs</h3>
                     <div className="flex justify-center gap-4">
                       {game.targetWord.split('').map((char, i) => (
                         <div key={i} className="flex flex-col items-center">
@@ -624,7 +624,7 @@ export default function App() {
 
                 {/* Alphabet Mapping */}
                 <section>
-                  <h3 className="text-xs opacity-60 uppercase mb-3 tracking-widest text-center">Tabela Podstawień</h3>
+                  <h3 className="text-xs opacity-60 uppercase mb-3 tracking-widest text-center">Substitution Table</h3>
                   <div className="overflow-x-auto pb-2 custom-scrollbar">
                     <div className="grid grid-cols-13 gap-1 min-w-[600px] text-center font-mono text-sm">
                       {ALPHABET.split('').map((char, i) => {
@@ -645,12 +645,12 @@ export default function App() {
                       })}
                     </div>
                   </div>
-                  <div className="mt-2 text-[10px] opacity-40 italic text-center uppercase">Góra: Oryginał | Dół: Szyfr</div>
+                  <div className="mt-2 text-[10px] opacity-40 italic text-center uppercase">Top: Original | Bottom: Cipher</div>
                 </section>
 
                 {/* Officer Data Recap */}
                 <section>
-                  <h3 className="text-xs opacity-60 uppercase mb-3 tracking-widest text-center">Dane Wywiadowcze (Meldunki)</h3>
+                  <h3 className="text-xs opacity-60 uppercase mb-3 tracking-widest text-center">Intelligence Data (Reports)</h3>
                   <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
                     {game.puzzleData.map((data, i) => (
                       <div key={i} className="bg-[#33ff33]/5 border border-[#33ff33]/20 py-1 text-center">
@@ -664,7 +664,7 @@ export default function App() {
                 {/* Interactive Workbench */}
                 <section className="border-y border-[#33ff33]/20 py-6">
                   <h3 className="text-sm font-bold uppercase mb-4 text-[#33ff33] flex items-center gap-2">
-                    <MoveHorizontal size={16} /> Warsztat Dekryptażu (Przeciągnij litery)
+                    <MoveHorizontal size={16} /> Decryption Workbench (Drag Letters)
                   </h3>
                   <Reorder.Group 
                     axis="x" 
@@ -687,7 +687,7 @@ export default function App() {
                   {workbenchLetters.length === 0 && (
                     <div className="text-center py-4 border-2 border-dashed border-[#33ff33]/20 rounded mb-6">
                       <p className="text-xs opacity-40 uppercase italic">
-                        Kliknij w odkodowane litery w tabeli powyżej, aby dodać je tutaj
+                        Click decoded letters in table above to add them here
                       </p>
                     </div>
                   )}
@@ -696,7 +696,7 @@ export default function App() {
                 {/* Input Mirror */}
                 <section className="bg-[#33ff33]/10 p-6 border border-[#33ff33]/30 rounded text-center">
                   <label htmlFor="helper-input" className="block text-sm mb-4 opacity-70 uppercase tracking-widest">
-                    Wprowadź Odkodowany Kod
+                    Enter Decoded Code
                   </label>
                   <div className="flex justify-center items-center gap-3">
                     <span className="text-3xl blink text-[#33ff33]">{">"}</span>
@@ -712,7 +712,7 @@ export default function App() {
                     />
                   </div>
                   <p className="mt-4 text-[10px] opacity-50 italic uppercase">
-                    {WORD_LENGTH} cyfr wymaganych. Naciśnij ESC lub X aby wrócić.
+                    {WORD_LENGTH} digits required. Press ESC or X to return.
                   </p>
                 </section>
               </div>
